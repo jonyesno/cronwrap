@@ -1,0 +1,145 @@
+#!/bin/sh
+
+# usage: cronwrap name interval command...
+# jon@zomo.co.uk. See README for blurbs.
+
+# cronwrap runs the specified command under lockrun's protection
+# output is placed in a timestamped file under ${LOG_DIR}/${NAME}
+# this directory contains some extra goodies too:
+#
+# interval isn't used other than to write it into the log
+# monitoring systems may use it to detect overdue jobs
+#
+#   last_run       symlink to last log
+#   last_job_ok    symlink to log of last successful execution of the job
+#   last_job_fail  symlink to log of last failed execution
+#   last_lock_fail symlink to log of last run forbidden by lockrun
+#
+# it also contains a subdirectory 'status', which contains:
+#
+#   OK / FAIL / LOCK marker indicating status of last exiting run (*)
+#   job_ok           list of timestamps when the job ran ok
+#   job_fail         list of timestamps when the job failed
+#   lock_fail        list of timestamps when the job didn't run owing to lockrun
+#
+# (*) note that this may not be the last run that is invoked by cron, which may
+#     have been declined by lockrun. this lockrun'd attempt will create the LOCK marker,
+#     but if the first job eventually succeeds it will replace it the OK marker.
+#
+# override CRONWRAP_LOG_DIR, CRONWRAP_LOCK_DIR, CRONWRAP_LOCKRUN as appropriate
+#
+# caution: don't place the CRONWRAP_LOCKRUN on a shared filesystem, they tend to have
+#          different locking behaviours
+
+NAME=$1 ; shift
+INT=$1  ; shift
+CMD=$*
+
+fail() {
+  echo "cronwrap: FATAL $*"
+  exit 32
+}
+
+if [ -z "${NAME}" ] || \
+   [ -z ${INT}  ] || \
+   [ -z "${CMD}"  ] ; then
+   echo usage: cronwrap name interval command
+   exit 1
+fi
+
+LOG_DIR=${CRONWRAP_LOG_DIR:-/var/log/cronwrap}
+LOCK_DIR=${CRONWRAP_LOCK_DIR:-/var/run/cronwrap}
+CRON_DIR=${LOG_DIR}/${NAME}
+STATUS_DIR=${CRON_DIR}/status
+LOCK=${LOCK_DIR}/${NAME}.lock
+HOST=$( uname -n )
+
+STAMP=$( date '+%Y%m%d-%H%M%S' )
+TIME=$( date '+%s' )
+
+LOCKRUN=${CRONWRAP_LOCKRUN:-/usr/local/bin/lockrun}
+[ -x ${LOCKRUN} ] || fail "can't find lockrun at ${LOCKRUN}"
+
+[ -d ${LOG_DIR}  ] || fail "log directory ${LOG_DIR} doesn't exist"
+[ -d ${LOCK_DIR} ] || fail "lock directory ${LOCK_DIR} doesn't exist"
+mkdir -p ${STATUS_DIR} || fail "couldn't create ${STATUS_DIR}"
+mkdir -p ${LOCK_DIR}   || fail "couldn't create ${LOCK_DIR}"
+LOG=${CRON_DIR}/${STAMP}.log
+TMP=${CRON_DIR}/$$.log # feeble, but gives us route back to the running job via fuser and procfs
+
+touch ${STATUS_DIR}/job_ok
+touch ${STATUS_DIR}/job_fail
+touch ${STATUS_DIR}/lock_fail
+
+echo ${STAMP} > ${STATUS_DIR}/last_attempt
+echo ${INT}   > ${STATUS_DIR}/interval
+
+RUN="${LOCKRUN} --lockfile ${LOCK} --verbose -- ${CMD}"
+
+date > ${TMP}
+echo "host: ${HOST}"    >> ${TMP}
+echo "name: ${NAME}"    >> ${TMP}
+echo "interval: ${INT}" >> ${TMP}
+echo "command: ${CMD}"  >> ${TMP}
+echo "wrapped: ${RUN}"  >> ${TMP}
+echo >> ${TMP}
+
+${RUN} >> ${TMP} 2>&1
+EXIT=$?
+echo >> ${TMP}
+
+if [ ${EXIT} -gt 0 ] ; then
+  # run was locked
+  echo "failed: lockrun indicated earlier process running" >> ${TMP}
+  mv ${TMP} ${LOG}
+  ln -nsf ${LOG} ${CRON_DIR}/last_run
+  ln -nsf ${LOG} ${CRON_DIR}/last_lock_fail
+  rm -f ${STATUS_DIR}/OK
+  rm -f ${STATUS_DIR}/FAIL
+  echo ${STAMP} >  ${STATUS_DIR}/LOCK
+  echo ${STAMP} >> ${STATUS_DIR}/lock_fail
+
+  if [ -n "${DEBUG}" ] ; then
+    echo lock_fail
+    echo
+    cat ${LOG}
+  fi
+  exit 1
+fi
+
+EXIT=$( egrep '^pid [0-9]+ exited with status [0-9]+' ${TMP} | awk '{print $6;}' )
+[ -n "${EXIT}" ] || fail "couldn't recover real exit status from ${TMP}"
+if [ ${EXIT} -gt 0 ] ; then
+  # command ran, but errored
+  echo "failed: command exited non-zero" >> ${TMP}
+  mv ${TMP} ${LOG}
+  ln -nsf ${LOG} ${CRON_DIR}/last_run
+  ln -nsf ${LOG} ${CRON_DIR}/last_job_fail
+  rm -f ${STATUS_DIR}/OK
+  rm -f ${STATUS_DIR}/LOCK
+  echo ${STAMP} >  ${STATUS_DIR}/FAIL
+  echo ${STAMP} >> ${STATUS_DIR}/job_fail
+
+  if [ -n "${DEBUG}" ] ; then
+    echo job_fail
+    echo
+    cat ${LOG}
+  fi
+  exit 2
+fi
+
+echo "success: job exited ok" >> ${TMP}
+mv ${TMP} ${LOG}
+ln -nsf ${LOG} ${CRON_DIR}/last_run
+ln -nsf ${LOG} ${CRON_DIR}/last_job_ok
+rm -f ${STATUS_DIR}/FAIL
+rm -f ${STATUS_DIR}/LOCK
+echo ${STAMP} >  ${STATUS_DIR}/OK
+echo ${STAMP} >> ${STATUS_DIR}/job_ok
+if [ -n "${DEBUG}" ] ; then
+  echo job_ok
+  echo
+  cat ${LOG}
+fi
+
+exit 0

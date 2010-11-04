@@ -1,0 +1,44 @@
+#!/bin/sh
+
+# usage: show-cronwrap-log jobname
+# jon@zomo.co.uk. See README for blurbs.
+
+# show-cronwrap-log shows the output from a cronwrap'd job that's
+# still running
+#
+# requires pgrep, /proc fs (Linux)
+
+NAME=$1
+LOG_DIR=${CRONWRAP_LOG_DIR:-/var/log/cronwrap}
+LOCK_DIR=${CRONWRAP_LOCK_DIR:-/var/run/cronwrap}
+CRON_DIR=${LOG_DIR}/${NAME}
+LOCK=${LOCK_DIR}/${NAME}.lock
+
+if [ ! -d ${CRON_DIR} ] ; then
+  echo "can't find logs for this job at ${CRON_DIR}"
+  exit 1
+fi
+
+if fuser -s ${LOCK} ; then
+  echo "job: locked"
+ _PID=$( fuser ${LOCK} 2>&1 | awk '{print $NF;}' )
+  if [ -z "${_PID}" ] ; then
+    echo "couldn't recover PID from fuser."
+    exit 1
+  fi
+  echo "lockrun pid: ${_PID}"
+  _PPID=$( cat /proc/${_PID}/stat | awk '{print $4;}' )
+  if [ -z "${_PPID}" ] ; then
+    echo "couldn't recover PPID from /proc."
+    exit 1
+  fi
+  echo "cronwrap pid: ${_PPID}"
+  LOG=${CRON_DIR}/${_PPID}.log
+else 
+  echo "job: not locked"
+  LOG=${CRON_DIR}/last_run
+fi
+
+echo "log: ${LOG}"
+echo
+cat ${LOG}
