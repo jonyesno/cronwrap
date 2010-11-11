@@ -40,6 +40,7 @@ See comments within cronwrap for details, but here's an example cron.d snippet
   kill-cronwrap-job - kills the the job that cronwrap (and thus lockrun) is managing
                       useful to nuke a wedged job that is holding up
   cronweb.rb        - diddy Sinarta web app to provide a web view on cronwrap status and logs
+  check_cronwrap    - a Nagios test to guage the health of cronwrapped jobs
 
 The last three are decidedly less portable than the main cronwrap script.
 
