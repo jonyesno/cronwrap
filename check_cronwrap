@@ -1,0 +1,70 @@
+#!/usr/bin/env ruby
+
+# check_cronwrap is a Nagios pluging to check health of cronwrapped jobs
+# usage: check_cronwrap [ <jobname> ... ]
+#        without explicit jobname(s) all wrapped jobs are checked
+# jon@zomo.co.uk. See README for blurbs.
+
+LOG_DIR=ENV['CRONWRAP_LOG_DIR'] || '/var/log/cronwrap' # where cronwrap logs are
+
+status = { :ok => [], :fail => [], :lock => [], :late => [], :notfound => [] }
+jobs   = ARGV.empty? ? Dir.entries(LOG_DIR) - [ '.', '..'] : ARGV
+
+if jobs.empty?
+  puts "WARNING: no jobs to check"
+  exit 1 # Nagios WARNING if there are no jobs at all 
+end
+
+jobs.each do |job|
+  dir = "#{LOG_DIR}/#{job}"
+  unless File.exist?(dir)
+    status[:notfound].push(job)
+    next
+  end
+
+  # check for lateness first
+  # if a cron is late then we don't check its health
+  last_attempt = "#{dir}/status/last_attempt"
+  interval     = "#{dir}/status/interval"
+
+  if File.exist?(last_attempt) && File.exist?(interval)
+    last_time     = File.mtime(last_attempt)
+    interval_time = File.read(interval).chomp.to_i
+    if Time.now > last_time + interval_time
+      status[:late].push(job)
+      next
+    end
+  end
+    
+  # check cron haalth
+  if File.exist?("#{dir}/status/OK")
+    status[:ok].push(job)
+  elsif File.exist?("#{dir}/status/LOCK")
+    status[:lock].push(job)
+  else
+    status[:fail].push(job)
+  end
+end
+
+def build_summary(list, desc)
+  unless list.empty?
+    return " #{desc}: #{list.join(',')}"
+  end
+  return ""
+end
+
+summary = ""
+summary += build_summary(status[:ok], 'OK')
+summary += build_summary(status[:lock], 'LOCKED')
+summary += build_summary(status[:fail], 'FAILED')
+summary += build_summary(status[:notfound], 'NOTFOUND')
+summary += build_summary(status[:late], 'LATE')
+
+summary.gsub!(/^ /,'')
+
+puts summary
+if status[:ok].length == jobs.length
+  exit 0
+else
+  exit 2 # Nagios ERROR
+end
