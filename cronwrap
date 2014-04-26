@@ -49,8 +49,8 @@ fi
 
 LOG_DIR=${CRONWRAP_LOG_DIR:-/var/log/cronwrap}
 LOCK_DIR=${CRONWRAP_LOCK_DIR:-/var/run/cronwrap}
-STATUS_DIR=${CRON_DIR}/status
 CRON_DIR=${LOG_DIR}/${NAME}
+STATUS_DIR=${CRON_DIR}/status
 LOCK=${LOCK_DIR}/${NAME}.lock
 HOST=$( uname -n )
 
