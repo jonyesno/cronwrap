@@ -49,8 +49,8 @@ fi
 
 LOG_DIR=${CRONWRAP_LOG_DIR:-/var/log/cronwrap}
 LOCK_DIR=${CRONWRAP_LOCK_DIR:-/var/run/cronwrap}
-CRON_DIR=${LOG_DIR}/${NAME}
 STATUS_DIR=${CRON_DIR}/status
+CRON_DIR=${LOG_DIR}/${NAME}
 LOCK=${LOCK_DIR}/${NAME}.lock
 HOST=$( uname -n )
 
@@ -60,10 +60,9 @@ TIME=$( date '+%s' )
 LOCKRUN=${CRONWRAP_LOCKRUN:-/usr/local/bin/lockrun}
 [ -x ${LOCKRUN} ] || fail "can't find lockrun at ${LOCKRUN}"
 
-[ -d ${LOG_DIR}  ] || fail "log directory ${LOG_DIR} doesn't exist"
-[ -d ${LOCK_DIR} ] || fail "lock directory ${LOCK_DIR} doesn't exist"
-mkdir -p ${STATUS_DIR} || fail "couldn't create ${STATUS_DIR}"
+mkdir -p ${LOG_DIR}    || fail "couldn't create ${LOG_DIR}"
 mkdir -p ${LOCK_DIR}   || fail "couldn't create ${LOCK_DIR}"
+mkdir -p ${STATUS_DIR} || fail "couldn't create ${STATUS_DIR}"
 LOG=${CRON_DIR}/${STAMP}.log
 TMP=${CRON_DIR}/$$.log # feeble, but gives us route back to the running job via fuser and procfs
 
