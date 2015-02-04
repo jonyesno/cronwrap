@@ -12,7 +12,7 @@ jobs   = ARGV.empty? ? Dir.entries(LOG_DIR) - [ '.', '..'] : ARGV
 
 if jobs.empty?
   puts "WARNING: no jobs to check"
-  exit 1 # Nagios WARNING if there are no jobs at all 
+  exit 1 # Nagios WARNING if there are no jobs at all
 end
 
 jobs.each do |job|
@@ -35,7 +35,7 @@ jobs.each do |job|
       next
     end
   end
-    
+
   # check cron haalth
   if File.exist?("#{dir}/status/OK")
     status[:ok].push(job)
