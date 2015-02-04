@@ -12,7 +12,7 @@ jobs   = ARGV.empty? ? Dir.entries(LOG_DIR) - [ '.', '..'] : ARGV
 
 if jobs.empty?
   puts "WARNING: no jobs to check"
-  exit 1 # Nagios WARNING if there are no jobs at all
+  exit 0 # Nagios OK if there are no jobs at all
 end
 
 jobs.each do |job|
@@ -64,7 +64,7 @@ summary.gsub!(/^ /,'')
 
 puts summary
 if status[:ok].length == jobs.length
-  exit 0
+  exit 0 # Nagios OK
 else
   exit 2 # Nagios ERROR
 end
