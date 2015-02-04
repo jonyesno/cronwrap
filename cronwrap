@@ -48,8 +48,8 @@ if [ -z "${NAME}" ] || \
 fi
 
 LOG_DIR=${CRONWRAP_LOG_DIR:-/var/log/cronwrap}
-LOCK_DIR=${CRONWRAP_LOCK_DIR:-/var/run/cronwrap}
 CRON_DIR=${LOG_DIR}/${NAME}
+LOCK_DIR=${CRONWRAP_LOCK_DIR:-${CRON_DIR}}
 STATUS_DIR=${CRON_DIR}/status
 LOCK=${LOCK_DIR}/${NAME}.lock
 HOST=$( uname -n )
