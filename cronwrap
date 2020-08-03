@@ -87,7 +87,7 @@ ${RUN} >> ${TMP} 2>&1
 EXIT=$?
 echo >> ${TMP}
 
-if [ ${EXIT} -gt 0 ] ; then
+if [ ${EXIT} -gt 0 ] && grep -q 'run is locked' ${TMP} ; then
   # run was locked
   echo "failed: lockrun indicated earlier process running" >> ${TMP}
   mv ${TMP} ${LOG}
@@ -106,8 +106,6 @@ if [ ${EXIT} -gt 0 ] ; then
   exit 1
 fi
 
-EXIT=$( egrep '^pid [0-9]+ exited with status [0-9]+' ${TMP} | awk '{print $6;}' )
-[ -n "${EXIT}" ] || fail "couldn't recover real exit status from ${TMP}"
 if [ ${EXIT} -gt 0 ] ; then
   # command ran, but errored
   echo "failed: command exited non-zero" >> ${TMP}
