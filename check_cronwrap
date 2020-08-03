@@ -53,18 +53,19 @@ def build_summary(list, desc)
   return ""
 end
 
-summary = ""
-summary += build_summary(status[:ok], 'OK')
-summary += build_summary(status[:lock], 'LOCKED')
-summary += build_summary(status[:fail], 'FAILED')
-summary += build_summary(status[:notfound], 'NOTFOUND')
-summary += build_summary(status[:late], 'LATE')
-
-summary.gsub!(/^ /,'')
-
-puts summary
 if status[:ok].length == jobs.length
+  summary = ""
+  summary += build_summary(status[:ok], 'OK')
+  summary.gsub!(/^ /,'')
+  puts summary
   exit 0 # Nagios OK
 else
+  summary = ""
+  summary += build_summary(status[:lock],     'LOCKED')
+  summary += build_summary(status[:fail],     'FAILED')
+  summary += build_summary(status[:notfound], 'NOTFOUND')
+  summary += build_summary(status[:late] ,    'LATE')
+  summary.gsub!(/^ /,'')
+  puts summary
   exit 2 # Nagios ERROR
 end
