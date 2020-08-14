@@ -55,7 +55,7 @@ end
 
 if status[:ok].length == jobs.length
   summary = ""
-  summary += build_summary(status[:ok], 'OK')
+  summary += build_summary([ "#{jobs.length} jobs" ], 'OK')
   summary.gsub!(/^ /,'')
   puts summary
   exit 0 # Nagios OK
