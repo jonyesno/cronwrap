@@ -53,6 +53,7 @@ LOCK_DIR=${CRONWRAP_LOCK_DIR:-${CRON_DIR}}
 STATUS_DIR=${CRON_DIR}/status
 LOCK=${LOCK_DIR}/${NAME}.lock
 HOST=$( uname -n )
+PATH=${CRONWRAP_PATH:-${PATH}}
 
 STAMP=$( date '+%Y%m%d-%H%M%S' )
 TIME=$( date '+%s' )
