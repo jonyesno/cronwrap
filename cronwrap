@@ -33,7 +33,7 @@
 
 NAME=$1 ; shift
 INT=$1  ; shift
-CMD=$*
+CMD=$@
 
 fail() {
   echo "cronwrap: FATAL $*"
@@ -41,7 +41,7 @@ fail() {
 }
 
 if [ -z "${NAME}" ] || \
-   [ -z ${INT}  ] || \
+   [ -z "${INT}"  ] || \
    [ -z "${CMD}"  ] ; then
    echo usage: cronwrap name interval command
    exit 1
@@ -74,18 +74,18 @@ touch ${STATUS_DIR}/lock_fail
 echo ${STAMP} > ${STATUS_DIR}/last_attempt
 echo ${INT}   > ${STATUS_DIR}/interval
 
-RUN="${LOCKRUN} --lockfile ${LOCK} --verbose -- ${CMD}"
-
 date > ${TMP}
 echo "host: ${HOST}"    >> ${TMP}
 echo "name: ${NAME}"    >> ${TMP}
 echo "interval: ${INT}" >> ${TMP}
 echo "command: ${CMD}"  >> ${TMP}
-echo "wrapped: ${RUN}"  >> ${TMP}
+echo "wrapped: ${LOCKRUN} --lockfile ${LOCK} --verbose -- $@" >> ${TMP}
+
 echo >> ${TMP}
 
-${RUN} >> ${TMP} 2>&1
+${LOCKRUN} --lockfile ${LOCK} --verbose -- "$@" >> ${TMP} 2>&1
 EXIT=$?
+
 echo >> ${TMP}
 
 if [ ${EXIT} -gt 0 ] && grep -q 'run is locked' ${TMP} ; then
