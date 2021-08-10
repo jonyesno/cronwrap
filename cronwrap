@@ -26,10 +26,35 @@
 #     have been declined by lockrun. this lockrun'd attempt will create the LOCK marker,
 #     but if the first job eventually succeeds it will replace it the OK marker.
 #
-# override CRONWRAP_LOG_DIR, CRONWRAP_LOCK_DIR, CRONWRAP_LOCKRUN as appropriate
+# override CRONWRAP_LOG_DIR, CRONWRAP_LOCK_DIR, CRONWRAP_LOCK_NAME,
+#          CRONWRAP_LOCKRUN as appropriate
 #
-# caution: don't place the CRONWRAP_LOCKRUN on a shared filesystem, they tend to have
+# caution: don't place CRONWRAP_LOCK_DIR on a shared filesystem, they tend to have
 #          different locking behaviours
+
+# -d logdir
+# -l lockdir
+# -n lockname
+usage() {
+   echo 'usage: cronwrap [ options ] name interval command' >&2
+   echo >&2
+   echo '  -d cronwrap_log_dir   (or set CRONWRAP_LOG_DIR)   default: /var/log/cronwrap/${name}' >&2
+   echo '  -l cronwrap_lock_dir  (or set CRONWRAP_LOCK_DIR)  default: /var/log/cronwrap/${name}' >&2
+   echo '  -n cronwrap_lock_name (or set CRONWRAP_LOCK_NAME) default: ${name}'                   >&2
+   echo >&2
+   echo 'lockfile is ${cronwrap_lock_dir}/${cronwrap_lock_name}.lock'                            >&2
+   exit 1
+ }
+
+while getopts ":d:l:n:" opt ; do
+  case ${opt} in
+    d)  CRONWRAP_LOG_DIR=${OPTARG}  ;;
+    l)  CRONWRAP_LOCK_DIR=${OPTARG} ;;
+    n)  CRONWRAP_LOCK_NAME=${OPTARG} ;;
+    \?) usage ;;
+  esac
+done
+shift $((OPTIND -1))
 
 NAME=$1 ; shift
 INT=$1  ; shift
@@ -43,15 +68,15 @@ fail() {
 if [ -z "${NAME}" ] || \
    [ -z "${INT}"  ] || \
    [ -z "${CMD}"  ] ; then
-   echo usage: cronwrap name interval command
-   exit 1
+   usage
 fi
 
 LOG_DIR=${CRONWRAP_LOG_DIR:-/var/log/cronwrap}
 CRON_DIR=${LOG_DIR}/${NAME}
 LOCK_DIR=${CRONWRAP_LOCK_DIR:-${CRON_DIR}}
 STATUS_DIR=${CRON_DIR}/status
-LOCK=${LOCK_DIR}/${NAME}.lock
+LOCK_NAME=${CRONWRAP_LOCK_NAME:-${NAME}}
+LOCK=${LOCK_DIR}/${LOCK_NAME}.lock
 HOST=$( uname -n )
 PATH=${CRONWRAP_PATH:-${PATH}}
 
@@ -65,7 +90,7 @@ mkdir -p ${LOG_DIR}    || fail "couldn't create ${LOG_DIR}"
 mkdir -p ${LOCK_DIR}   || fail "couldn't create ${LOCK_DIR}"
 mkdir -p ${STATUS_DIR} || fail "couldn't create ${STATUS_DIR}"
 LOG=${CRON_DIR}/${STAMP}.log
-TMP=${CRON_DIR}/$$.log # feeble, but gives us route back to the running job via fuser and procfs
+TMP=${CRON_DIR}/$$.log # feeble, but gives us route back to the running job
 
 touch ${STATUS_DIR}/job_ok
 touch ${STATUS_DIR}/job_fail
