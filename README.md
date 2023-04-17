@@ -1,4 +1,4 @@
-* Overview
+# Overview
 
 cronwrap is a wrapper script for cron jobs, written to mitigate some common
 pitfalls of cron jobs on systems I admin, where I tend to not write the jobs
@@ -6,32 +6,32 @@ themselves but have to pick up the pieces when things explode.
 
 See <http://www.zomo.co.uk/2010/02/cron/> for more about the motivation, but key aims are
 
-  . prevent multiple runs of the same job piling up by using lockrun(1) to mutex them
-  . store output in a timestamped directory
-  . make it easy for external monitoring to determine health of cron jobs
+  * prevent multiple runs of the same job piling up by using lockrun(1) to mutex them
+  * store output in a timestamped directory
+  * make it easy for external monitoring to determine health of cron jobs
 
 Absent from this incarnation are the SNMP and email hooks that other variants enjoy.
 
 Comments and criticism welcome.
 
-* Requirements
+# Requirements
 
-  . lockrun (http://unixwiz.net/tools/lockrun.html)
-  . for the additional scripts, working fuser, pgrep/pkill and /proc
-  . jobs to exit non-zero on error (** rant suppressed **)
+  * lockrun (http://unixwiz.net/tools/lockrun.html)
+  * for the additional scripts, working fuser, pgrep/pkill and /proc
+  * jobs to exit non-zero on error
 
-* External bits
+# External bits
 
-  . A (heh) cron job to age out old cronwrap logs
-  . A monitoring system to care about the FAIL / LOCK markers
+  * A (heh) cron job to age out old cronwrap logs
+  * A monitoring system to care about the FAIL / LOCK markers
 
-* Usage
+# Usage
 
 See comments within cronwrap for details, but here's an example cron.d snippet
 
   */5 * * * * nobody cronwrap update-local-cache 300 /usr/local/bin/cache-update -v local
 
-* Contents
+# Contents
 
   cronwrap          - wrapper itself
   show-cronwap-log  - since the output of a running is in a temporary file, it can
@@ -44,7 +44,7 @@ See comments within cronwrap for details, but here's an example cron.d snippet
 
 The last three are decidedly less portable than the main cronwrap script.
 
-* Thanks
+# Thanks
 
 Steve Friedl's nifty lockrun tool provides an elegant way to lock jobs from overlapping. It's
 way better than any homegrown effort of mine. http://unixwiz.net/tools/lockrun.html
@@ -52,10 +52,10 @@ way better than any homegrown effort of mine. http://unixwiz.net/tools/lockrun.h
 This version of cronwrap was written mostly on Deluxe Online's dime, so thanks to them for
 letting me share it. http://deluxeonline.co.uk/
 
-* License
+# License
 
 Relesed under a BSD license, see LICENSE. Non-warranty in there too.
 
-* Author
+# Author
 
 Jon Stuart, jon@zomo.co.uk, Zomo Technology Ltd, 2010.
