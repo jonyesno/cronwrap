@@ -39,11 +39,11 @@ usage() {
    echo 'usage: cronwrap [ options ] name interval command' >&2
    echo >&2
    # shellcheck disable=2016
-   echo '  -d cronwrap_log_dir   (or set CRONWRAP_LOG_DIR)   default: /var/log/cronwrap/${name}' >&2
+   echo '  -d cronwrap_log_dir   (or set CRONWRAP_LOG_DIR)    default: /var/log/cronwrap/${name}' >&2
    # shellcheck disable=2016
-   echo '  -l cronwrap_lock_dir  (or set CRONWRAP_LOCK_DIR)  default: /var/log/cronwrap/${name}' >&2
+   echo '  -l cronwrap_lock_dir  (or set CRONWRAP_LOCK_DIR)   default: /var/log/cronwrap/${name}' >&2
    # shellcheck disable=2016
-   echo '  -n cronwrap_lock_name (or set CRONWRAP_LOCK_NAME) default: ${name}'                   >&2
+   echo '  -n cronwrap_lock_name (or set CRONWRAP_LOCK_NAME)  default: ${name}'                   >&2
    echo '  -q                    (or set CRONWRAP_QUIET_LOCK) record locked jobs with status OK' >&2
    echo >&2
    # shellcheck disable=2016
