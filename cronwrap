@@ -113,7 +113,7 @@ echo "host: ${HOST}"    >> "${TMP}"
 echo "name: ${NAME}"    >> "${TMP}"
 echo "interval: ${INT}" >> "${TMP}"
 echo "command: ${CMD}"  >> "${TMP}"
-echo "wrapped: ${LOCKRUN} --lockfile ${LOCK} --verbose -- $*" >> "${TMP}"
+echo "wrapped: ${LOCKRUN} --lockfile ${LOCK} --verbose -- ${CMD}" >> "${TMP}"
 
 echo >> "${TMP}"
 
