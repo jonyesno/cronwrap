@@ -6,6 +6,7 @@ setup() {
   DIR=$( cd "$( dirname "${BATS_TEST_FILENAME}" )" >/dev/null 2>&1 && pwd )
   load "${DIR}/helper"
   _setup
+  PROG=cronwrap.lockrun
 }
 
 teardown() {
@@ -21,14 +22,14 @@ teardown() {
 @test "requires lockrun" {
   run env \
     CRONWRAP_LOCKRUN=/nonexistent \
-    cronwrap test-job 60 uptime
+    "${PROG}" test-job 60 uptime
   assert_failure
   assert_output --partial "can't find lockrun"
 
   run env \
     CRONWRAP_LOCKRUN="$(which lockrun)" \
     CRONWRAP_LOG_DIR="${TEST_LOG_ROOT}" \
-    cronwrap "test-job-${BATS_TEST_NUMBER}" 60 uptime
+    "${PROG}" "test-job-${BATS_TEST_NUMBER}" 60 uptime
   assert_success
 }
 
@@ -36,7 +37,7 @@ teardown() {
   run env \
     CRONWRAP_LOCKRUN="$(which lockrun)" \
     CRONWRAP_LOG_DIR="${TEST_LOG_ROOT}" \
-    cronwrap "test-job-${BATS_TEST_NUMBER}" 60 uptime
+    "${PROG}" "test-job-${BATS_TEST_NUMBER}" 60 uptime
 
   assert_success
   assert [ -d "${TEST_LOG_ROOT}/test-job-${BATS_TEST_NUMBER}" ]
@@ -47,7 +48,7 @@ teardown() {
   run env \
     CRONWRAP_LOCKRUN="$(which lockrun)" \
     CRONWRAP_LOG_DIR="${TEST_LOG_ROOT}" \
-    cronwrap "test-job-${BATS_TEST_NUMBER}" 60 echo mrs jaypher said it is safer
+    "${PROG}" "test-job-${BATS_TEST_NUMBER}" 60 echo mrs jaypher said it is safer
 
   assert_success
   assert grep -q jaypher "${TEST_LOG_ROOT}/test-job-${BATS_TEST_NUMBER}/last_run"
@@ -59,12 +60,12 @@ teardown() {
   run env \
     CRONWRAP_LOCKRUN="$(which lockrun)" \
     CRONWRAP_LOG_DIR="${TEST_LOG_ROOT}" \
-    cronwrap "test-job-${BATS_TEST_NUMBER}" 60 false
+    "${PROG}" "test-job-${BATS_TEST_NUMBER}" 60 false
 
   run env \
     CRONWRAP_LOCKRUN="$(which lockrun)" \
     CRONWRAP_LOG_DIR="${TEST_LOG_ROOT}" \
-    cronwrap "test-job-${BATS_TEST_NUMBER}" 60 true
+    "${PROG}" "test-job-${BATS_TEST_NUMBER}" 60 true
 
   assert_success
   assert [   -f "${TEST_LOG_ROOT}/test-job-${BATS_TEST_NUMBER}/status/OK" ]
@@ -79,12 +80,12 @@ teardown() {
   run env \
     CRONWRAP_LOCKRUN="$(which lockrun)" \
     CRONWRAP_LOG_DIR="${TEST_LOG_ROOT}" \
-    cronwrap "test-job-${BATS_TEST_NUMBER}" 60 true
+    "${PROG}" "test-job-${BATS_TEST_NUMBER}" 60 true
 
   run env \
     CRONWRAP_LOCKRUN="$(which lockrun)" \
     CRONWRAP_LOG_DIR="${TEST_LOG_ROOT}" \
-    cronwrap "test-job-${BATS_TEST_NUMBER}" 60 false
+    "${PROG}" "test-job-${BATS_TEST_NUMBER}" 60 false
 
   assert_failure 2
   assert [ ! -f "${TEST_LOG_ROOT}/test-job-${BATS_TEST_NUMBER}/status/OK" ]
@@ -99,7 +100,7 @@ teardown() {
   run env \
     CRONWRAP_LOCKRUN="$(which lockrun)" \
     CRONWRAP_LOG_DIR="${TEST_LOG_ROOT}" \
-    cronwrap "test-job-${BATS_TEST_NUMBER}" 60 true
+    "${PROG}" "test-job-${BATS_TEST_NUMBER}" 60 true
 
   assert grep -q 60 "${TEST_LOG_ROOT}/test-job-${BATS_TEST_NUMBER}/status/interval"
 }

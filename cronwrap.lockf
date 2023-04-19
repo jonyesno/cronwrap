@@ -1,0 +1,192 @@
+#!/bin/sh
+
+# usage: cronwrap name interval command...
+# jon@zomo.co.uk. See README for blurbs.
+
+# cronwrap runs the specified command under lockf's protection
+# output is placed in a timestamped file under ${LOG_DIR}/${NAME}
+# this directory contains some extra goodies too:
+#
+# interval isn't used other than to write it into the log
+# monitoring systems may use it to detect overdue jobs
+#
+#   last_run       symlink to last log
+#   last_job_ok    symlink to log of last successful execution of the job
+#   last_job_fail  symlink to log of last failed execution
+#   last_lock_fail symlink to log of last locked execution
+#
+# it also contains a subdirectory 'status', which contains:
+#
+#   OK / FAIL / LOCK marker indicating status of last exiting run (*)
+#   job_ok           list of timestamps when the job ran ok
+#   job_fail         list of timestamps when the job failed
+#   lock_fail        list of timestamps when the job was locked
+#
+# (*) note that this may not be the last run that is invoked by cron, which may
+#     have been declined by lockf. this locked attempt will create the LOCK marker,
+#     but if the first job eventually succeeds it will replace it the OK marker.
+#
+# override CRONWRAP_LOG_DIR, CRONWRAP_LOCK_DIR, CRONWRAP_LOCK_NAME as appropriate
+#
+# caution: don't place CRONWRAP_LOCK_DIR on a shared filesystem, they tend to have
+#          different locking behaviours
+
+# -d logdir
+# -l lockdir
+# -n lockname
+usage() {
+   echo 'usage: cronwrap [ options ] name interval command' >&2
+   echo >&2
+   # shellcheck disable=2016
+   echo '  -d cronwrap_log_dir   (or set CRONWRAP_LOG_DIR)    default: /var/log/cronwrap/${name}' >&2
+   # shellcheck disable=2016
+   echo '  -l cronwrap_lock_dir  (or set CRONWRAP_LOCK_DIR)   default: /var/log/cronwrap/${name}' >&2
+   # shellcheck disable=2016
+   echo '  -n cronwrap_lock_name (or set CRONWRAP_LOCK_NAME)  default: ${name}'                   >&2
+   echo '  -q                    (or set CRONWRAP_QUIET_LOCK) record locked jobs with status OK'  >&2
+   echo >&2
+   # shellcheck disable=2016
+   echo 'lockfile is ${cronwrap_lock_dir}/${cronwrap_lock_name}.lock'                             >&2
+   exit 1
+ }
+
+while getopts ":d:l:n:q" opt ; do
+  case ${opt} in
+    d)  CRONWRAP_LOG_DIR=${OPTARG}   ;;
+    l)  CRONWRAP_LOCK_DIR=${OPTARG}  ;;
+    n)  CRONWRAP_LOCK_NAME=${OPTARG} ;;
+    q)  CRONWRAP_QUIET_LOCK=1        ;;
+    \?) usage ;;
+  esac
+done
+shift $((OPTIND -1))
+
+NAME=$1 ; shift
+INT=$1  ; shift
+CMD="$*"
+
+fail() {
+  echo "cronwrap: FATAL $*"
+  exit 32
+}
+
+if [ -z "${NAME}" ] || \
+   [ -z "${INT}"  ] || \
+   [ -z "${CMD}"  ] ; then
+   usage
+fi
+
+LOG_DIR=${CRONWRAP_LOG_DIR:-/var/log/cronwrap}
+CRON_DIR=${LOG_DIR}/${NAME}
+LOCK_DIR=${CRONWRAP_LOCK_DIR:-${CRON_DIR}}
+STATUS_DIR=${CRON_DIR}/status
+LOCK_NAME=${CRONWRAP_LOCK_NAME:-${NAME}}
+LOCK=${LOCK_DIR}/${LOCK_NAME}.lock
+HOST=$( uname -n )
+PATH=${CRONWRAP_PATH:-${PATH}}
+
+QUIET_LOCK=${CRONWRAP_QUIET_LOCK:-}
+
+STAMP=$( date '+%Y%m%d-%H%M%S' )
+
+command -v lockf > /dev/null 2>&1 || fail "can't find lockf(0)"
+
+mkdir -p "${LOG_DIR}"    || fail "couldn't create ${LOG_DIR}"
+mkdir -p "${LOCK_DIR}"   || fail "couldn't create ${LOCK_DIR}"
+mkdir -p "${STATUS_DIR}" || fail "couldn't create ${STATUS_DIR}"
+LOG=${CRON_DIR}/${STAMP}.log
+TMP=${CRON_DIR}/$$.log # feeble, but gives us route back to the running job
+
+touch "${STATUS_DIR}/job_ok"
+touch "${STATUS_DIR}/job_fail"
+touch "${STATUS_DIR}/lock_fail"
+
+echo "${STAMP}" > "${STATUS_DIR}/last_attempt"
+echo "${INT}"   > "${STATUS_DIR}/interval"
+
+# shellcheck disable=2129
+date > "${TMP}"
+# shellcheck disable=2129
+echo "host: ${HOST}"    >> "${TMP}"
+echo "name: ${NAME}"    >> "${TMP}"
+echo "interval: ${INT}" >> "${TMP}"
+echo "command: ${CMD}"  >> "${TMP}"
+echo "wrapped: lockf -s -t 0 ${LOCK} ${CMD}" >> "${TMP}"
+
+echo >> "${TMP}"
+
+lockf -s -t 0 "${LOCK}" "$@" >> "${TMP}" 2>&1
+EXIT=$?
+
+echo >> "${TMP}"
+
+if [ ${EXIT} -eq 75 ] ; then # EX_TEMPFAIL
+  # run was locked
+
+  if [ -z "${QUIET_LOCK}" ] ; then
+    echo "failed: lockf indicated earlier process running" >> "${TMP}"
+    mv "${TMP}" "${LOG}"
+
+    ln -nsf "${LOG}" "${CRON_DIR}/last_run"
+    ln -nsf "${LOG}" "${CRON_DIR}/last_lock_fail"
+    rm -f "${STATUS_DIR}/OK"
+    rm -f "${STATUS_DIR}/FAIL"
+    echo "${STAMP}" >  "${STATUS_DIR}/LOCK"
+    echo "${STAMP}" >> "${STATUS_DIR}/lock_fail"
+  else
+    echo "failed: lockf indicated earlier process running (quiet lock mode)" >> "${TMP}"
+    mv "${TMP}" "${LOG}"
+
+    # in quiet mode we link the log as lock_fail and touch the lock_fail marker
+    # but set the overall status as OK
+    ln -nsf "${LOG}" "${CRON_DIR}/last_run"
+    ln -nsf "${LOG}" "${CRON_DIR}/last_lock_fail"
+    rm -f "${STATUS_DIR}/LOCK"
+    rm -f "${STATUS_DIR}/FAIL"
+    echo "${STAMP}" >  "${STATUS_DIR}/OK"
+    echo "${STAMP}" >> "${STATUS_DIR}/lock_fail"
+  fi
+
+  if [ -n "${DEBUG}" ] ; then
+    echo lock_fail
+    echo
+    cat "${LOG}"
+  fi
+  exit 1
+fi
+
+if [ "${EXIT}" -gt 0 ] ; then
+  # command ran, but errored
+  echo "failed: command exited non-zero" >> "${TMP}"
+  mv "${TMP}" "${LOG}"
+  ln -nsf "${LOG}" "${CRON_DIR}/last_run"
+  ln -nsf "${LOG}" "${CRON_DIR}/last_job_fail"
+  rm -f "${STATUS_DIR}/OK"
+  rm -f "${STATUS_DIR}/LOCK"
+  echo "${STAMP}" >  "${STATUS_DIR}/FAIL"
+  echo "${STAMP}" >> "${STATUS_DIR}/job_fail"
+
+  if [ -n "${DEBUG}" ] ; then
+    echo job_fail
+    echo
+    cat "${LOG}"
+  fi
+  exit 2
+fi
+
+echo "success: job exited ok" >> "${TMP}"
+mv "${TMP}" "${LOG}"
+ln -nsf "${LOG}" "${CRON_DIR}/last_run"
+ln -nsf "${LOG}" "${CRON_DIR}/last_job_ok"
+rm -f "${STATUS_DIR}/FAIL"
+rm -f "${STATUS_DIR}/LOCK"
+echo "${STAMP}" >  "${STATUS_DIR}/OK"
+echo "${STAMP}" >> "${STATUS_DIR}/job_ok"
+
+if [ -n "${DEBUG}" ] ; then
+  echo job_ok
+  echo
+  cat "${LOG}"
+fi
+
+exit 0
