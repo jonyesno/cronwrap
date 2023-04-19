@@ -13,7 +13,7 @@ teardown() {
   _teardown
 }
 
-@test "locks a overlapping job and marks it locked" {
+@test "locks a overlapping job and marks it LOCK" {
   run env \
     CRONWRAP_LOCKRUN="$(which lockrun)" \
     CRONWRAP_LOG_DIR="${TEST_LOG_ROOT}" \
