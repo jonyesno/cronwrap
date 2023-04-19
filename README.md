@@ -29,7 +29,7 @@ and `cronwrap.lockrun` which uses a more cross-platform locker,
 # External bits
 
   * A (heh) cron job to age out old cronwrap logs
-  * A monitoring system to care about the FAIL / LOCK markers
+  * A monitoring system to care about the `OK`, `FAIL`, `LOCK` markers
 
 # Usage
 
@@ -45,19 +45,19 @@ compare it to the adjacent `last_ran` value.
 
 # Contents
 
-  cronwrap.lockf    - wrapper itself
-  cronwrap.lockrun  - wrapper itself
+  `cronwrap.lockf`    - wrapper itself
+  `cronwrap.lockrun`  - wrapper itself
 
-  check_cronwrap    - a Nagios test to guage the health of cronwrapped jobs
+  `check_cronwrap`    - a Nagios test to guage the health of cronwrapped jobs
 
-  show-cronwap-log  - since the output of a running is in a temporary file, it can
+  `show-cronwap-log`  - since the output of a running is in a temporary file, it can
                       be hard to find. this script finds it, useful to work out
                       what a long-running job is up to.
 
-  kill-cronwrap-job - kills the the job that cronwrap (and thus lockrun) is managing
+  `kill-cronwrap-job` - kills the the job that cronwrap (and thus lockrun) is managing
                       useful to nuke a wedged job that is holding up
 
-  cronweb.rb        - diddy Sinarta web app to provide a web view on cronwrap status and logs
+  `cronweb.rb`        - diddy Sinarta web app to provide a web view on cronwrap status and logs
 
 
 The last three are decidedly less portable than the main cronwrap script.
