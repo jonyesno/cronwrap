@@ -6,7 +6,7 @@ setup() {
   DIR=$( cd "$( dirname "${BATS_TEST_FILENAME}" )" >/dev/null 2>&1 && pwd )
   load "${DIR}/helper"
   _setup
-  PROG=cronwrap.lockrun
+  PROG="${DIR}/../cronwrap.lockrun"
 }
 
 teardown() {
@@ -14,7 +14,7 @@ teardown() {
 }
 
 @test "usage" {
-  run cronwrap
+  run "${PROG}"
   assert_failure
   assert_output --partial 'usage:'
 }
